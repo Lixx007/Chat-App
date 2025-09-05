@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>ChatWave 💬</title>
+  <script src="https://cdn.tailwindcss.com/3.4.16"></script>
+</head>
+
+<body class="bg-gray-900 text-white flex flex-col h-screen">
+
+  <!-- Header -->
+  <header class="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 p-4 text-center shadow-lg">
+    <h1 class="text-3xl font-bold">ChatWave 💬</h1>
+    <p class="text-sm">Real-time Chat with Socket.io</p>
+  </header>
+
+  <!-- Chat Container -->
+  <main class="flex-1 overflow-y-auto p-4 space-y-3" id="messageArea">
+    <!-- Messages will appear here -->
+  </main>
+
+  <!-- Input Box -->
+  <footer class="bg-gray-800 p-4 flex gap-2 items-center">
+    <input id="myname" type="text" placeholder="Your Name"
+      class="flex-1 p-2 rounded-lg border border-gray-600 bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-indigo-400">
+
+    <input id="message" type="text" placeholder="Type a message..."
+      class="flex-1 p-2 rounded-lg border border-gray-600 bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-indigo-400">
+
+    <button id="sendBtn"
+      class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 rounded-lg font-semibold">
+      Send
+    </button>
+  </footer>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+    const nameInput = document.getElementById("myname");
+    const messageInput = document.getElementById("message");
+    const sendBtn = document.getElementById("sendBtn");
+    const messageArea = document.getElementById("messageArea");
+
+    sendBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      if (nameInput.value && messageInput.value) {
+        const data = {
+          username: nameInput.value,
+          message: messageInput.value,
+          time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
+        };
+        socket.emit("send message", data);
+        messageInput.value = "";
+      }
+    });
+
+    socket.on("receive message", (data) => {
+      const msgDiv = document.createElement("div");
+      msgDiv.classList.add("p-3", "rounded-lg", "shadow-md", "w-fit", "max-w-xs");
+
+      if (data.username === nameInput.value) {
+        msgDiv.classList.add("ml-auto", "bg-indigo-600", "text-white");
+      } else {
+        msgDiv.classList.add("bg-gray-700", "text-gray-100");
+      }
+
+      msgDiv.innerHTML = `
+        <p class="text-sm font-semibold">${data.username} <span class="text-xs text-gray-400">(${data.time})</span></p>
+        <p class="mt-1">${data.message}</p>
+      `;
+      messageArea.appendChild(msgDiv);
+      messageArea.scrollTop = messageArea.scrollHeight;
+    });
+  </script>
+</body>
+</html>
