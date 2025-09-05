@@ -4,6 +4,12 @@
   <meta charset="UTF-8">
   <title>ChatWave 💬</title>
   <script src="https://cdn.tailwindcss.com/3.4.16"></script>
+  <style>
+    /* Modal background blur */
+    .modal-bg {
+      backdrop-filter: blur(6px);
+    }
+  </style>
 </head>
 
 <body class="bg-gray-900 text-white flex flex-col h-screen">
@@ -20,12 +26,15 @@
   </main>
 
   <!-- Input Box -->
-  <footer class="bg-gray-800 p-4 flex gap-2 items-center">
+  <footer class="bg-gray-800 p-5 flex gap-2 items-center">
     <input id="myname" type="text" placeholder="Your Name"
-      class="flex-1 p-2 rounded-lg border border-gray-600 bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-indigo-400">
+      class="w-1/4 p-2 rounded-lg border border-gray-600 bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-indigo-400">
 
-    <input id="message" type="text" placeholder="Type a message..."
-      class="flex-1 p-2 rounded-lg border border-gray-600 bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-indigo-400">
+    <div class="flex items-center w-full bg-gray-700 rounded-lg border border-gray-600">
+      <input id="message" type="text" placeholder="Type a message..."
+        class="flex-1 p-2 bg-transparent text-white focus:outline-none">
+      <button id="emojiBtn" class="px-2 text-xl">😊</button>
+    </div>
 
     <button id="sendBtn"
       class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 rounded-lg font-semibold">
@@ -33,14 +42,71 @@
     </button>
   </footer>
 
+  <!-- Passkey Modal -->
+  <div id="passModal" class="fixed inset-0 flex items-center justify-center modal-bg bg-black/60">
+    <div class="bg-gray-800 p-6 rounded-2xl shadow-xl w-80 text-center">
+      <h2 class="text-xl font-bold mb-4">🔒 Enter Passkey</h2>
+      <input id="passInput" type="password" placeholder="Enter passkey"
+        class="w-full p-2 rounded-lg border border-gray-600 bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-indigo-400">
+      <button id="submitPass"
+        class="mt-4 w-full py-2 bg-indigo-600 hover:bg-indigo-700 rounded-lg font-semibold">Unlock</button>
+      <p id="errorMsg" class="text-red-400 text-sm mt-2 hidden">❌ Wrong Passkey! Try Again.</p>
+    </div>
+  </div>
+
+  <!-- Emoji Picker Script -->
+  <script src="https://cdn.jsdelivr.net/npm/emoji-picker-element@^1/index.js" type="module"></script>
+
   <script src="/socket.io/socket.io.js"></script>
-  <script>
-    const socket = io();
+  <script type="module">
+    const socket = io({
+      autoConnect: false // ✅ Pehle passkey verify karenge, phir connect
+    });
+
+    const passModal = document.getElementById("passModal");
+    const passInput = document.getElementById("passInput");
+    const submitPass = document.getElementById("submitPass");
+    const errorMsg = document.getElementById("errorMsg");
+
     const nameInput = document.getElementById("myname");
     const messageInput = document.getElementById("message");
     const sendBtn = document.getElementById("sendBtn");
     const messageArea = document.getElementById("messageArea");
+    const emojiBtn = document.getElementById("emojiBtn");
 
+    // ✅ Emoji picker create karo
+    const picker = document.createElement("emoji-picker");
+    picker.classList.add("absolute", "bottom-20", "right-5", "bg-white");
+    picker.style.display = "none";
+    document.body.appendChild(picker);
+
+    emojiBtn.addEventListener("click", () => {
+      picker.style.display = picker.style.display === "none" ? "block" : "none";
+    });
+
+    picker.addEventListener("emoji-click", (event) => {
+      messageInput.value += event.detail.unicode;
+      picker.style.display = "none";
+    });
+
+    // ✅ Passkey check
+    submitPass.addEventListener("click", () => {
+      const passkey = passInput.value.trim();
+      socket.auth = { passkey };
+
+      socket.connect();
+
+      socket.on("connect_error", (err) => {
+        errorMsg.classList.remove("hidden");
+        console.log("❌ Unauthorized:", err.message);
+      });
+
+      socket.on("connect", () => {
+        passModal.style.display = "none"; // hide modal
+      });
+    });
+
+    // ✅ Send message
     sendBtn.addEventListener("click", (e) => {
       e.preventDefault();
       if (nameInput.value && messageInput.value) {
@@ -54,6 +120,7 @@
       }
     });
 
+    // ✅ Receive message
     socket.on("receive message", (data) => {
       const msgDiv = document.createElement("div");
       msgDiv.classList.add("p-3", "rounded-lg", "shadow-md", "w-fit", "max-w-xs");
